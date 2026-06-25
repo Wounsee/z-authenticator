@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Z Authenticator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-elevated: #131313;
+    --card: #161616;
+    --card-hover: #1c1c1c;
+    --border: #262626;
+    --border-hover: #3a3a3a;
+    --fg: #fafafa;
+    --fg-muted: #888;
+    --fg-dim: #555;
+    --accent: #c6f432;
+    --accent-dim: #8eb021;
+    --accent-glow: rgba(198, 244, 50, 0.15);
+    --danger: #ff5a5a;
+    --warning: #ffb84d;
+    --radius: 14px;
+  }
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  html, body { 
+    height: 100%; 
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'Space Grotesk', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  body {
+    background: 
+      radial-gradient(ellipse 80% 50% at 50% -20%, var(--accent-glow), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(198, 244, 50, 0.06), transparent 70%),
+      var(--bg);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+    opacity: 0.025;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .app { 
+    position: relative; 
+    z-index: 1; 
+    max-width: 1100px; 
+    margin: 0 auto; 
+    padding: 32px 24px 80px; 
+  }
+  
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 48px;
+  }
+  
+  .logo { display: flex; align-items: center; gap: 12px; }
+  
+  .logo-mark {
+    width: 38px; height: 38px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    color: #000;
+    font-weight: 700;
+    font-size: 20px;
+    position: relative;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .logo-mark::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 13px;
+    background: var(--accent);
+    opacity: 0.3;
+    filter: blur(10px);
+    z-index: -1;
+  }
+  
+  .logo-text { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  .logo-text span { color: var(--fg-muted); font-weight: 400; }
+  
+  .btn {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn:hover { background: var(--card-hover); border-color: var(--border-hover); }
+  
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  
+  .btn-primary:hover {
+    background: #d4ff4d;
+    border-color: #d4ff4d;
+    box-shadow: 0 0 24px var(--accent-glow);
+  }
+  
+  .btn-danger { color: var(--danger); border-color: var(--border); }
+  .btn-danger:hover { background: rgba(255,90,90,0.1); border-color: var(--danger); }
+  
+  .hero { margin-bottom: 32px; }
+  
+  .hero h1 {
+    font-size: 42px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    margin-bottom: 8px;
+    line-height: 1.05;
+  }
+  
+  .hero h1 .dot { color: var(--accent); }
+  
+  .hero p { color: var(--fg-muted); font-size: 15px; }
+  
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  
+  .search { flex: 1; position: relative; }
+  
+  .search input {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 12px 16px 12px 44px;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  
+  .search input:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+    background: var(--card-hover);
+  }
+  
+  .search svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--fg-dim);
+  }
+  
+  .accounts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+  
+  .account {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: visible;
+    transition: all 0.2s;
+    animation: cardIn 0.4s ease-out;
+  }
+  
+  @keyframes cardIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  
+  .account:hover {
+    border-color: var(--border-hover);
+    background: var(--card-hover);
+    transform: translateY(-1px);
+  }
+  
+  .account.frozen {
+    border-color: var(--accent-dim);
+    background: linear-gradient(135deg, var(--card), rgba(198, 244, 50, 0.04));
+  }
+  
+  .account.expiring .account-code { color: var(--warning); }
+  .account.expiring .account-progress-bar { background: var(--warning); }
+  .account.expiring .account-timer { color: var(--warning); }
+  
+  .account-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  
+  .account-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    font-weight: 600;
+    font-size: 15px;
+    color: #000;
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .account-info { flex: 1; min-width: 0; }
+  
+  .account-issuer {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .account-label {
+    font-size: 12px;
+    color: var(--fg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+  
+  .account-menu-btn {
+    background: transparent;
+    border: none;
+    color: var(--fg-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  
+  .account-menu-btn:hover { background: var(--bg-elevated); color: var(--fg); }
+  
+  .account-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 38px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    margin-bottom: 14px;
+    color: var(--fg);
+    transition: opacity 0.2s, transform 0.2s, color 0.3s;
+    line-height: 1;
+  }
+  
+  .account-code.updating {
+    opacity: 0.25;
+    transform: translateY(-2px);
+  }
+  
+  .account-code.frozen { color: var(--accent); }
+  
+  .account-progress-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  
+  .account-progress {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  
+  .account-progress-bar {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.95s linear, background 0.3s;
+  }
+  
+  .account.frozen .account-progress-bar {
+    background: var(--accent);
+    width: 100% !important;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .account-timer {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--fg-muted);
+    min-width: 28px;
+    text-align: right;
+    transition: color 0.3s;
+  }
+  
+  .account.frozen .account-timer { color: var(--accent); }
+  
+  .account-actions { display: flex; gap: 8px; }
+  
+  .account-action {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--fg-muted);
+    padding: 7px 12px;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .account-action:hover {
+    color: var(--fg);
+    border-color: var(--border-hover);
+    background: var(--card-hover);
+  }
+  
+  .account-action.primary {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+    background: rgba(198, 244, 50, 0.05);
+  }
+  
+  .account-action.primary:hover { background: var(--accent-glow); }
+  
+  .account-action.copied {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: var(--accent-dim);
+  }
+  
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  .dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px;
+    min-width: 220px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    z-index: 20;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-4px);
+    transition: all 0.15s;
+  }
+  
+  .dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    color: var(--fg);
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    transition: background 0.1s;
+  }
+  
+  .dropdown-item:hover { background: var(--card); }
+  .dropdown-item.danger { color: var(--danger); }
+  .dropdown-item.danger:hover { background: rgba(255,90,90,0.1); }
+  
+  .dropdown-divider { height: 1px; background: var(--border); margin: 4px 0; }
+  
+  .dropdown-label {
+    font-size: 10px;
+    color: var(--fg-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 6px 10px 4px;
+    font-weight: 600;
+  }
+  
+  .period-options {
+    display: flex;
+    gap: 4px;
+    padding: 0 6px 6px;
+  }
+  
+  .period-option {
+    flex: 1;
+    padding: 6px 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--fg-muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  
+  .period-option.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    border-color: var(--accent-dim);
+  }
+  
+  .period-option:hover:not(.active) {
+    color: var(--fg);
+    border-color: var(--border-hover);
+  }
+  
+  .empty {
+    text-align: center;
+    padding: 80px 20px;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+  }
+  
+  .empty-icon {
+    width: 64px; height: 64px;
+    margin: 0 auto 20px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    color: var(--fg-dim);
+    position: relative;
+  }
+  
+  .empty-icon::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 16px;
+    border: 1px solid var(--accent-dim);
+    opacity: 0.3;
+  }
+  
+  .empty h3 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  .empty p { color: var(--fg-muted); font-size: 14px; margin-bottom: 24px; }
+  .empty-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  
+  .modal-overlay.open { display: flex; }
+  
+  .modal {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalIn 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.94) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  
+  .modal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  
+  .modal-title { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  
+  .modal-close {
+    background: transparent;
+    border: none;
+    color: var(--fg-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  
+  .modal-close:hover { background: var(--card); color: var(--fg); }
+  
+  .tabs {
+    display: flex;
+    background: var(--card);
+    padding: 4px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+  }
+  
+  .tab {
+    flex: 1;
+    padding: 9px;
+    background: transparent;
+    border: none;
+    color: var(--fg-muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 7px;
+    transition: all 0.15s;
+  }
+  
+  .tab.active { background: var(--bg-elevated); color: var(--fg); }
+  
+  .field { margin-bottom: 16px; }
+  
+  .field label {
+    display: block;
+    font-size: 12px;
+    color: var(--fg-muted);
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  
+  .field input, .field select {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 12px 14px;
+    border-radius: 9px;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent-dim);
+    background: var(--card-hover);
+  }
+  
+  .field input.mono { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.05em; }
+  
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  
+  .field-hint { font-size: 11px; color: var(--fg-dim); margin-top: 6px; }
+  
+  .scanner {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    aspect-ratio: 1;
+    background: #000;
+    cursor: pointer;
+  }
+  
+  .scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  
+  .scanner-overlay {
+    position: absolute;
+    inset: 20px;
+    border-radius: 12px;
+    pointer-events: none;
+  }
+  
+  .scanner-overlay::before,
+  .scanner-overlay::after,
+  .scanner-overlay > span::before,
+  .scanner-overlay > span::after {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--accent);
+  }
+  
+  .scanner-overlay::before {
+    top: 0; left: 0;
+    border-right: none; border-bottom: none;
+    border-radius: 10px 0 0 0;
+  }
+  
+  .scanner-overlay::after {
+    top: 0; right: 0;
+    border-left: none; border-bottom: none;
+    border-radius: 0 10px 0 0;
+  }
+  
+  .scanner-overlay > span::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    border-right: none; border-top: none;
+    border-radius: 0 0 0 10px;
+  }
+  
+  .scanner-overlay > span::after {
+    content: '';
+    position: absolute;
+    bottom: 0; right: 0;
+    border-left: none; border-top: none;
+    border-radius: 0 0 10px 0;
+  }
+  
+  .scanner-placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: var(--fg-muted);
+    text-align: center;
+    padding: 20px;
+    font-size: 13px;
+  }
+  
+  .scanner-status {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    text-align: center;
+    background: rgba(0,0,0,0.7);
+    color: var(--fg);
+    padding: 7px;
+    border-radius: 7px;
+    font-size: 12px;
+    backdrop-filter: blur(4px);
+  }
+  
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  
+  .toast {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    animation: toastIn 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    pointer-events: auto;
+  }
+  
+  .toast.success { border-color: var(--accent-dim); }
+  .toast.success svg { color: var(--accent); }
+  .toast.error { border-color: var(--danger); }
+  .toast.error svg { color: var(--danger); }
+  
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  footer {
+    margin-top: 48px;
+    text-align: center;
+    color: var(--fg-dim);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  
+  footer strong { color: var(--fg-muted); font-weight: 500; }
+  
+  @media (max-width: 600px) {
+    .app { padding: 20px 16px 60px; }
+    header { margin-bottom: 32px; }
+    .hero h1 { font-size: 30px; }
+    .accounts { grid-template-columns: 1fr; }
+    .account-code { font-size: 34px; }
+    .logo-text span { display: none; }
+  }
+  
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">E</div>
+      <div class="logo-text">Z<span> · Authenticator</span></div>
+    </div>
+    <button class="btn btn-primary" id="addBtn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Добавить
+    </button>
+  </header>
+  
+  <div class="hero">
+    <h1>Ваши коды<span class="dot"></span></h1>
+    <p id="heroSubtitle">Двухфакторная аутентификация, которая работает на вас</p>
+  </div>
+  
+  <div class="toolbar" id="toolbar" style="display:none">
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="searchInput" placeholder="Поиск по аккаунтам...">
+    </div>
+  </div>
+  
+  <div id="accountsContainer"></div>
+  
+  <footer>
+    <strong>Z Authenticator</strong> · Все данные хранятся только на вашем устройстве<br>
+    Ни один байт не покидает ваш браузер
+  </footer>
+</div>
+
+<!-- Add Account Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Добавить аккаунт</div>
+      <button class="modal-close" data-close aria-label="Закрыть">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    
+    <div class="tabs">
+      <button class="tab active" data-tab="scan">Сканировать QR</button>
+      <button class="tab" data-tab="manual">Ввести вручную</button>
+    </div>
+    
+    <div id="tabScan">
+      <div class="scanner" id="scanner">
+        <div class="scanner-placeholder">
+          <div>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px">
+              <rect x="3" y="3" width="7" height="7" rx="1"/>
+              <rect x="14" y="3" width="7" height="7" rx="1"/>
+              <rect x="3" y="14" width="7" height="7" rx="1"/>
+              <path d="M14 14h3v3h-3zM18 18h3v3h-3z"/>
+            </svg>
+            <div>Нажмите, чтобы запустить камеру</div>
+            <div style="font-size:11px;margin-top:6px;color:var(--fg-dim)">или перейдите на ручной ввод</div>
+          </div>
+        </div>
+      </div>
+      <p class="field-hint" style="text-align:center;margin-top:12px">
+        Наведите камеру на QR-код, который выдал сервис
+      </p>
+    </div>
+    
+    <div id="tabManual" style="display:none">
+      <div class="field">
+        <label>Название сервиса</label>
+        <input type="text" id="manualIssuer" placeholder="Google, GitHub, Discord..." autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Аккаунт</label>
+        <input type="text" id="manualLabel" placeholder="user@example.com" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Секретный ключ (Base32)</label>
+        <input type="text" id="manualSecret" class="mono" placeholder="JBSWY3DPEHPK3PXP" autocomplete="off" spellcheck="false">
+        <div class="field-hint">16–32 символа, символы A–Z и 2–7, без пробелов</div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Период (сек)</label>
+          <select id="manualPeriod">
+            <option value="15">15</option>
+            <option value="30" selected>30</option>
+            <option value="60">60</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Длина кода</label>
+          <select id="manualDigits">
+            <option value="6" selected>6 цифр</option>
+            <option value="7">7 цифр</option>
+            <option value="8">8 цифр</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="manualAddBtn" style="width:100%;justify-content:center;margin-top:8px">
+        Добавить аккаунт
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Delete Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <div class="modal-title">Удалить аккаунт?</div>
+    </div>
+    <p style="color:var(--fg-muted);font-size:14px;margin-bottom:24px;line-height:1.5">
+      Это действие необратимо. Придётся заново настраивать 2FA для <span id="confirmName" style="color:var(--fg);font-weight:600"></span>.
+    </p>
+    <div style="display:flex;gap:10px">
+      <button class="btn" style="flex:1;justify-content:center" data-close>Отмена</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" style="flex:1;justify-content:center">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ============ Состояние ============
+let accounts = [];
+let videoStream = null;
+let scanInterval = null;
+let deleteTarget = null;
+
+const STORAGE_KEY = 'z_authenticator_v1';
+
+// ============ Хранилище ============
+function load() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (data) accounts = JSON.parse(data);
+  } catch (e) { accounts = []; }
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(accounts));
+}
+
+// ============ TOTP (RFC 6238) ============
+function base32Decode(str) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  str = (str || '').toUpperCase().replace(/=+$/, '').replace(/\s/g, '');
+  let bits = '', bytes = [];
+  for (const c of str) {
+    const idx = alphabet.indexOf(c);
+    if (idx === -1) continue;
+    bits += idx.toString(2).padStart(5, '0');
+  }
+  for (let i = 0; i + 8 <= bits.length; i += 8) {
+    bytes.push(parseInt(bits.substr(i, 8), 2));
+  }
+  return new Uint8Array(bytes);
+}
+
+async function generateTOTP(secret, period = 30, digits = 6, time = Date.now()) {
+  try {
+    const key = base32Decode(secret);
+    if (key.length === 0) return '•'.repeat(digits);
+    const counter = Math.floor(time / 1000 / period);
+    const buffer = new ArrayBuffer(8);
+    const view = new DataView(buffer);
+    view.setUint32(0, Math.floor(counter / 2 ** 32));
+    view.setUint32(4, counter >>> 0);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw', key, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']
+    );
+    const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, buffer));
+    const offset = hmac[hmac.length - 1] & 0xf;
+    const code = ((hmac[offset] & 0x7f) << 24 |
+                  (hmac[offset + 1] & 0xff) << 16 |
+                  (hmac[offset + 2] & 0xff) << 8 |
+                  (hmac[offset + 3] & 0xff)) % Math.pow(10, digits);
+    return code.toString().padStart(digits, '0');
+  } catch (e) {
+    return '•'.repeat(digits);
+  }
+}
+
+// Парсинг otpauth:// URI
+function parseOtpAuth(uri) {
+  try {
+    if (!uri.startsWith('otpauth://')) return null;
+    const url = new URL(uri);
+    const params = url.searchParams;
+    const label = decodeURIComponent(url.pathname.substring(1).replace(/\+/g, ' '));
+    let issuer = params.get('issuer') || '';
+    let accountName = label;
+    if (label.includes(':')) {
+      const parts = label.split(':');
+      if (!issuer) issuer = parts[0].trim();
+      accountName = parts.slice(1).join(':').trim();
+    }
+    return {
+      issuer: issuer || accountName || 'Account',
+      label: accountName || issuer || '',
+      secret: (params.get('secret') || '').toUpperCase().replace(/\s/g, ''),
+      period: parseInt(params.get('period') || '30', 10),
+      digits: parseInt(params.get('digits') || '6', 10)
+    };
+  } catch (e) { return null; }
+}
+
+// ============ Утилиты ============
+function uid() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+function hashColor(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  const hue = Math.abs(h) % 360;
+  return `hsl(${hue}, 65%, 55%)`;
+}
+
+function initials(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(/[\s@._-]+/).filter(Boolean);
+  if (parts.length === 0) return name[0].toUpperCase();
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+function formatCode(code) {
+  if (code.length === 6) return code.substring(0, 3) + ' ' + code.substring(3);
+  if (code.length === 7) return code.substring(0, 3) + ' ' + code.substring(3);
+  if (code.length === 8) return code.substring(0, 4) + ' ' + code.substring(4);
+  return code;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ============ Рендер ============
+const container = document.getElementById('accountsContainer');
+const toolbar = document.getElementById('toolbar');
+const heroSubtitle = document.getElementById('heroSubtitle');
+
+async function render() {
+  const query = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const filtered = query ? accounts.filter(a => 
+    (a.issuer + ' ' + a.label).toLowerCase().includes(query)
+  ) : accounts;
+  
+  // Обновляем подзаголовок
+  if (accounts.length === 0) {
+    heroSubtitle.textContent = 'Добавьте первый аккаунт, чтобы начать получать коды';
+  } else {
+    const frozen = accounts.filter(a => a.frozenCode).length;
+    heroSubtitle.textContent = `${accounts.length} ${plural(accounts.length, ['аккаунт защищён', 'аккаунта защищено', 'аккаунтов защищено'])}` + 
+      (frozen > 0 ? ` · ${frozen} ${plural(frozen, ['код зафиксирован', 'кода зафиксировано', 'кодов зафиксировано'])}` : '');
+  }
+  
+  if (accounts.length === 0) {
+    toolbar.style.display = 'none';
+    container.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="11" width="18" height="11" rx="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
+        <h3>Пока пусто</h3>
+        <p>Добавьте первый аккаунт, чтобы начать получать коды</p>
+        <div class="empty-actions">
+          <button class="btn btn-primary" onclick="document.getElementById('addBtn').click()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Добавить аккаунт
+          </button>
+          <button class="btn" onclick="addDemo()">Попробовать с демо</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  toolbar.style.display = accounts.length >= 4 ? 'flex' : 'none';
+  
+  const grid = document.createElement('div');
+  grid.className = 'accounts';
+  
+  for (const acc of filtered) {
+    const card = document.createElement('div');
+    card.className = 'account' + (acc.frozenCode ? ' frozen' : '');
+    card.dataset.id = acc.id;
+    grid.appendChild(card);
+    await renderCard(card, acc);
+  }
+  
+  container.innerHTML = '';
+  container.appendChild(grid);
+  
+  if (filtered.length === 0 && query) {
+    container.innerHTML = `<div class="empty"><h3>Ничего не найдено</h3><p>Попробуйте изменить запрос</p></div>`;
+  }
+}
+
+function plural(n, forms) {
+  const cases = [2, 0, 1, 1, 1, 2];
+  return forms[(n % 100 > 4 && n % 100 < 20) ? 2 : cases[Math.min(n % 10, 5)]];
+}
+
+async function renderCard(card, acc) {
+  const now = Date.now();
+  const period = acc.period || 30;
+  const elapsed = (now / 1000) % period;
+  const remaining = Math.ceil(period - elapsed);
+  const progressPct = (remaining / period) * 100;
+  
+  let code, isFrozen = !!acc.frozenCode;
+  if (isFrozen) {
+    code = acc.frozenCode.code;
+  } else {
+    code = await generateTOTP(acc.secret, period, acc.digits || 6, now);
+  }
+  
+  card.innerHTML = `
+    <div class="account-head">
+      <div class="account-icon" style="background:${hashColor(acc.issuer + acc.label)}">${initials(acc.issuer || acc.label)}</div>
+      <div class="account-info">
+        <div class="account-issuer">
+          ${escapeHtml(acc.issuer || 'Account')}
+          ${isFrozen ? '<span class="badge">FIX</span>' : ''}
+        </div>
+        <div class="account-label">${escapeHtml(acc.label || '—')}</div>
+      </div>
+      <button class="account-menu-btn" data-menu aria-label="Меню">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="1.5"/>
+          <circle cx="12" cy="12" r="1.5"/>
+          <circle cx="12" cy="19" r="1.5"/>
+        </svg>
+      </button>
+      <div class="dropdown" data-dropdown>
+        <div class="dropdown-label">Период обновления</div>
+        <div class="period-options">
+          ${[15, 30, 60].map(p => `<button class="period-option ${p === period ? 'active' : ''}" data-period="${p}">${p}s</button>`).join('')}
+        </div>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item" data-action="copy">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Копировать код
+        </button>
+        ${isFrozen ? `
+          <button class="dropdown-item" data-action="unfreeze">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M12 3v18"/></svg>
+            Снять фиксацию
+          </button>
+        ` : `
+          <button class="dropdown-item" data-action="freeze">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            Зафиксировать код
+          </button>
+        `}
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item danger" data-action="delete">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Удалить аккаунт
+        </button>
+      </div>
+    </div>
+    <div class="account-code ${isFrozen ? 'frozen' : ''}" data-code>${formatCode(code)}</div>
+    <div class="account-progress-wrap">
+      <div class="account-progress">
+        <div class="account-progress-bar" style="width:${isFrozen ? 100 : progressPct}%"></div>
+      </div>
+      <div class="account-timer">${isFrozen ? '∞' : remaining + 's'}</div>
+    </div>
+    <div class="account-actions">
+      <button class="account-action" data-action="copy" aria-label="Копировать код">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Копировать
+      </button>
+      ${isFrozen ? `
+        <button class="account-action primary" data-action="activate">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Использован
+        </button>
+      ` : `
+        <button class="account-action" data-action="freeze">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          Зафиксировать
+        </button>
+      `}
+    </div>
+  `;
+}
+
+// ============ Цикл обновления ============
+let updateInterval = null;
+
+function startUpdateLoop() {
+  if (updateInterval) clearInterval(updateInterval);
+  updateInterval = setInterval(async () => {
+    const cards = document.querySelectorAll('.account');
+    const now = Date.now();
+    
+    for (const card of cards) {
+      const id = card.dataset.id;
+      const acc = accounts.find(a => a.id === id);
+      if (!acc) continue;
+      
+      if (acc.frozenCode) continue;
+      
+      const period = acc.period || 30;
+      const elapsed = (now / 1000) % period;
+      const remaining = Math.ceil(period - elapsed);
+      const progressPct = (remaining / period) * 100;
+      
+      // Подсветка когда мало времени
+      if (remaining <= 5) {
+        card.classList.add('expiring');
+      } else {
+        card.classList.remove('expiring');
+      }
+      
+      // Обновление прогресс-бара
+      const bar = card.querySelector('.account-progress-bar');
+      if (bar) bar.style.width = progressPct + '%';
+      
+      // Обновление таймера
+      const timer = card.querySelector('.account-timer');
+      if (timer) timer.textContent = remaining + 's';
+      
+      // Обновление кода на новом периоде
+      if (elapsed < 1) {
+        const codeEl = card.querySelector('[data-code]');
+        if (codeEl && !codeEl.classList.contains('updating')) {
+          codeEl.classList.add('updating');
+          const newCode = await generateTOTP(acc.secret, period, acc.digits || 6, now);
+          setTimeout(() => {
+            if (codeEl.isConnected) {
+              codeEl.textContent = formatCode(newCode);
+              codeEl.classList.remove('updating');
+            }
+          }, 200);
+        }
+      }
+    }
+  }, 1000);
+}
+
+// ============ Действия ============
+async function copyCode(acc, sourceBtn) {
+  let code;
+  if (acc.frozenCode) code = acc.frozenCode.code;
+  else code = await generateTOTP(acc.secret, acc.period || 30, acc.digits || 6);
+  
+  try {
+    await navigator.clipboard.writeText(code);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = code;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e2) {}
+    document.body.removeChild(ta);
+  }
+  
+  showToast('Код скопирован', 'success');
+  
+  // Визуальная обратная связь на кнопке
+  if (sourceBtn) {
+    const original = sourceBtn.innerHTML;
+    sourceBtn.classList.add('copied');
+    sourceBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Скопировано`;
+    setTimeout(() => {
+      sourceBtn.classList.remove('copied');
+      sourceBtn.innerHTML = original;
+    }, 1400);
+  }
+}
+
+function freezeCode(acc) {
+  generateTOTP(acc.secret, acc.period || 30, acc.digits || 6).then(code => {
+    acc.frozenCode = { code, createdAt: Date.now() };
+    save();
+    render();
+    showToast('Код зафиксирован — не изменится до снятия', 'success');
+  });
+}
+
+function activateCode(acc) {
+  acc.frozenCode = null;
+  save();
+  render();
+  showToast('Код активирован — генерация возобновлена', 'success');
+}
+
+function deleteAccount(acc) {
+  deleteTarget = acc;
+  document.getElementById('confirmName').textContent = acc.issuer || acc.label;
+  document.getElementById('confirmModal').classList.add('open');
+}
+
+function confirmDelete() {
+  if (!deleteTarget) return;
+  accounts = accounts.filter(a => a.id !== deleteTarget.id);
+  save();
+  deleteTarget = null;
+  document.getElementById('confirmModal').classList.remove('open');
+  render();
+  showToast('Аккаунт удалён', 'success');
+}
+
+function addAccount(data) {
+  const acc = {
+    id: uid(),
+    issuer: data.issuer || 'Account',
+    label: data.label || '',
+    secret: data.secret,
+    period: data.period || 30,
+    digits: data.digits || 6,
+    frozenCode: null,
+    createdAt: Date.now()
+  };
+  accounts.push(acc);
+  save();
+  render();
+  showToast('Аккаунт добавлен', 'success');
+}
+
+function addDemo() {
+  addAccount({
+    issuer: 'Demo Service',
+    label: 'hello@example.com',
+    secret: 'JBSWY3DPEHPK3PXP',
+    period: 30,
+    digits: 6
+  });
+}
+
+// ============ Уведомления ============
+function showToast(msg, type = 'default') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  const icons = {
+    success: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>',
+    error: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    default: ''
+  };
+  toast.innerHTML = (icons[type] || '') + msg;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+    toast.style.transition = 'all 0.2s';
+    setTimeout(() => toast.remove(), 200);
+  }, 2400);
+}
+
+// ============ QR-сканер ============
+async function startScanner() {
+  const scannerEl = document.getElementById('scanner');
+  scannerEl.innerHTML = `
+    <video id="scannerVideo" autoplay playsinline muted></video>
+    <div class="scanner-overlay"><span></span></div>
+    <div class="scanner-status">Наведите камеру на QR-код...</div>
+  `;
+  
+  try {
+    videoStream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } 
+    });
+    const video = document.getElementById('scannerVideo');
+    video.srcObject = videoStream;
+    await video.play();
+    
+    scanInterval = setInterval(() => {
+      if (video.readyState === video.HAVE_Z_DATA) {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(video, 0, 0);
+        try {
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+          if (code) {
+            const data = parseOtpAuth(code.data);
+            if (data) {
+              stopScanner();
+              closeModal('addModal');
+              addAccount(data);
+              return;
+            }
+            // Пробуем как raw secret
+            const raw = code.data.trim().toUpperCase().replace(/\s/g, '');
+            if (/^[A-Z2-7]{16,}$/.test(raw)) {
+              stopScanner();
+              closeModal('addModal');
+              addAccount({ issuer: 'Account', label: '', secret: raw, period: 30, digits: 6 });
+              return;
+            }
+          }
+        } catch (e) {}
+      }
+    }, 200);
+  } catch (e) {
+    scannerEl.innerHTML = `
+      <div class="scanner-placeholder">
+        <div>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.5" style="margin-bottom:10px">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div style="color:var(--danger);margin-bottom:4px">Нет доступа к камере</div>
+          <div style="font-size:12px">Используйте ручной ввод</div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function stopScanner() {
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+  if (videoStream) {
+    videoStream.getTracks().forEach(t => t.stop());
+    videoStream = null;
+  }
+}
+
+// ============ Модалки ============
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'addModal') stopScanner();
+}
+
+// ============ События ============
+document.getElementById('addBtn').addEventListener('click', () => {
+  openModal('addModal');
+  document.querySelector('[data-tab="scan"]').click();
+  document.getElementById('scanner').innerHTML = `
+    <div class="scanner-placeholder">
+      <div>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <path d="M14 14h3v3h-3zM18 18h3v3h-3z"/>
+        </svg>
+        <div>Нажмите, чтобы запустить камеру</div>
+        <div style="font-size:11px;margin-top:6px;color:var(--fg-dim)">или перейдите на ручной ввод</div>
+      </div>
+    </div>
+  `;
+  document.getElementById('manualIssuer').value = '';
+  document.getElementById('manualLabel').value = '';
+  document.getElementById('manualSecret').value = '';
+});
+
+document.querySelectorAll('[data-close]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open'));
+    stopScanner();
+  });
+});
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', (e) => {
+    if (e.target === m) {
+      m.classList.remove('open');
+      stopScanner();
+    }
+  });
+});
+
+// Табы
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const tab = t.dataset.tab;
+    document.getElementById('tabScan').style.display = tab === 'scan' ? 'block' : 'none';
+    document.getElementById('tabManual').style.display = tab === 'manual' ? 'block' : 'none';
+    if (tab === 'manual') stopScanner();
+    if (tab === 'scan') {
+      // сброс плейсхолдера
+      const scannerEl = document.getElementById('scanner');
+      if (!scannerEl.querySelector('video')) {
+        scannerEl.innerHTML = `
+          <div class="scanner-placeholder">
+            <div>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px">
+                <rect x="3" y="3" width="7" height="7" rx="1"/>
+                <rect x="14" y="3" width="7" height="7" rx="1"/>
+                <rect x="3" y="14" width="7" height="7" rx="1"/>
+                <path d="M14 14h3v3h-3zM18 18h3v3h-3z"/>
+              </svg>
+              <div>Нажмите, чтобы запустить камеру</div>
+              <div style="font-size:11px;margin-top:6px;color:var(--fg-dim)">или перейдите на ручной ввод</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+  });
+});
+
+// Клик по сканеру для запуска
+document.getElementById('scanner').addEventListener('click', (e) => {
+  if (e.target.closest('.scanner-placeholder')) {
+    startScanner();
+  }
+});
+
+// Ручной ввод
+document.getElementById('manualAddBtn').addEventListener('click', () => {
+  const issuer = document.getElementById('manualIssuer').value.trim();
+  const label = document.getElementById('manualLabel').value.trim();
+  const secret = document.getElementById('manualSecret').value.trim().toUpperCase().replace(/\s/g, '');
+  const period = parseInt(document.getElementById('manualPeriod').value, 10);
+  const digits = parseInt(document.getElementById('manualDigits').value, 10);
+  
+  if (!secret) {
+    showToast('Введите секретный ключ', 'error');
+    return;
+  }
+  if (!/^[A-Z2-7]{10,}$/.test(secret)) {
+    showToast('Секрет должен быть в Base32 (A–Z, 2–7)', 'error');
+    return;
+  }
+  
+  addAccount({ issuer: issuer || 'Account', label, secret, period, digits });
+  closeModal('addModal');
+});
+
+// Enter в форме ручного ввода
+['manualIssuer', 'manualLabel', 'manualSecret'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('manualAddBtn').click();
+  });
+});
+
+// Подтверждение удаления
+document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+
+// Поиск
+document.getElementById('searchInput').addEventListener('input', render);
+
+// Делегирование событий для карточек
+document.addEventListener('click', async (e) => {
+  // Кнопка меню
+  const menuBtn = e.target.closest('[data-menu]');
+  if (menuBtn) {
+    e.stopPropagation();
+    const card = menuBtn.closest('.account');
+    const dropdown = card.querySelector('[data-dropdown]');
+    const isOpen = dropdown.classList.contains('open');
+    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+    if (!isOpen) dropdown.classList.add('open');
+    return;
+  }
+  
+  // Закрытие dropdown при клике вне
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+  
+  // Смена периода
+  const periodBtn = e.target.closest('[data-period]');
+  if (periodBtn) {
+    e.stopPropagation();
+    const card = periodBtn.closest('.account');
+    const acc = accounts.find(a => a.id === card.dataset.id);
+    if (acc) {
+      acc.period = parseInt(periodBtn.dataset.period, 10);
+      acc.frozenCode = null;
+      save();
+      render();
+      showToast(`Период изменён на ${acc.period}s`, 'success');
+    }
+    return;
+  }
+  
+  // Действия
+  const actionBtn = e.target.closest('[data-action]');
+  if (actionBtn) {
+    const card = actionBtn.closest('.account');
+    const acc = accounts.find(a => a.id === card.dataset.id);
+    if (!acc) return;
+    const action = actionBtn.dataset.action;
+    
+    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+    
+    if (action === 'copy') copyCode(acc, actionBtn);
+    else if (action === 'freeze') freezeCode(acc);
+    else if (action === 'unfreeze' || action === 'activate') activateCode(acc);
+    else if (action === 'delete') deleteAccount(acc);
+  }
+});
+
+// Горячие клавиши
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => {
+      m.classList.remove('open');
+      stopScanner();
+    });
+    document.querySelectorAll('.dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+  // Ctrl/Cmd+N — добавить
+  if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+    e.preventDefault();
+    document.getElementById('addBtn').click();
+  }
+});
+
+// ============ Инициализация ============
+load();
+render();
+startUpdateLoop();
+</script>
+</body>
+</html>
